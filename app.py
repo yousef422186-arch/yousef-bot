@@ -4,17 +4,16 @@ import threading
 from flask import Flask
 import telebot
 
-# ۱. دریافت متغیرهای محیطی
 BOT_TOKEN = os.getenv("YOUSEF_BOT_TOKEN", "").strip()
-BASE_URL = "https://router.huggingface.co/v1"
 API_KEY = os.getenv("API_KEY", "").strip()
+BASE_URL = "https://router.huggingface.co/v1"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot is Running!"
+    return "Bot is running!"
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
@@ -23,11 +22,10 @@ def handle_message(message):
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json"
         }
-        # استفاده از مدل بسیار محبوب و در دسترس
+        # استفاده از مدل فوق‌قدرتمند و محبوب که مخصوص چت است
         data = {
-            "model": "mistralai/Mistral-7B-Instruct-v0.3",
-            "messages": [{"role": "user", "content": message.text}],
-            "max_tokens": 500
+            "model": "meta-llama/Llama-3.1-8B-Instruct",
+            "messages": [{"role": "user", "content": message.text}]
         }
             
         response = requests.post(f"{BASE_URL}/chat/completions", json=data, headers=headers)
@@ -37,8 +35,7 @@ def handle_message(message):
             reply = result['choices'][0]['message']['content']
             bot.reply_to(message, reply)
         else:
-            # نمایش متن کامل خطا برای تشخیص دلیل نهایی
-            bot.reply_to(message, f"خطای سرور ({response.status_code}): {response.text}")
+            bot.reply_to(message, f"خطای ارتباطی: {response.status_code}")
     except Exception as e:
         bot.reply_to(message, f"خطا: {str(e)}")
 
