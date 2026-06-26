@@ -12,17 +12,14 @@ API_KEY = os.getenv("API_KEY", "").strip()
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
-# صفحه اصلی وب برای تایید سلامت پورت در رندر
 @app.route('/')
 def home():
     return "Bot is Running on Render!"
 
-# دستور استارت ربات
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message, "ربات هوش مصنوعی فعال شد. پیام خود را بفرستید.")
 
-# دریافت پیام‌ها و ارسال به Bluesminds
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     try:
@@ -35,8 +32,18 @@ def handle_message(message):
             "messages": [{"role": "user", "content": message.text}]
         }
         
-        clean_url = BASE_URL if BASE_URL else "https://api.bluesminds.ir"
-        response = requests.post(f"{clean_url}/v1/chat/completions", json=data, headers=headers)
+        # تمیز کردن آدرس پایه برای جلوگیری از ایجاد ارور 404
+        if BASE_URL:
+            # اگر کاربر خودش ته آدرس v1 گذاشته باشد، آن را پاک می‌کنیم تا تداخل ایجاد نشود
+            clean_url = BASE_URL.rstrip('/')
+            if clean_url.endswith('/v1'):
+                final_url = f"{clean_url}/chat/completions"
+            else:
+                final_url = f"{clean_url}/v1/chat/completions"
+        else:
+            final_url = "https://api.bluesminds.ir/v1/chat/completions"
+            
+        response = requests.post(final_url, json=data, headers=headers)
         
         if response.status_code == 200:
             result = response.json()
@@ -47,17 +54,14 @@ def handle_message(message):
     except Exception as e:
         bot.reply_to(message, f"یک خطای فنی رخ داد: {str(e)}")
 
-# تابع مخصوص اجرای ربات تلگرام در Thread جداگانه
 def run_telegram_bot():
     print("Starting Telegram Bot Polling...")
     bot.infinity_polling(timeout=10, long_polling_timeout=5)
 
 if __name__ == "__main__":
-    # روشن کردن ربات در پس‌زمینه بدون بلاک کردن سرور وب
     t = threading.Thread(target=run_telegram_bot)
     t.daemon = True
     t.start()
     
-    # روشن کردن وب‌سرور فلاسك روی پورت رندر
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
