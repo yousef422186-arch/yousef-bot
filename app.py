@@ -6,7 +6,7 @@ import telebot
 
 # ۱. دریافت متغیرهای محیطی
 BOT_TOKEN = os.getenv("YOUSEF_BOT_TOKEN", "").strip()
-BASE_URL = os.getenv("BASE_URL", "").strip()
+BASE_URL = "https://router.huggingface.co/v1"
 API_KEY = os.getenv("API_KEY", "").strip()
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -16,10 +16,6 @@ app = Flask(__name__)
 def home():
     return "Bot is Running on Render!"
 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.reply_to(message, "ربات هوش مصنوعی فعال شد. پیام خود را بفرستید.")
-
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     try:
@@ -27,41 +23,28 @@ def handle_message(message):
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json"
         }
+        # استفاده از مدل استاندارد و ساده‌تر برای جلوگیری از ارور 400
         data = {
-            "model": "gpt-4o-mini",
-            "messages": [{"role": "user", "content": message.text}]
+            "model": "meta-llama/Llama-3.1-8B-Instruct",
+            "messages": [{"role": "user", "content": message.text}],
+            "max_tokens": 500
         }
-        
-        # تمیز کردن آدرس پایه برای جلوگیری از ایجاد ارور 404
-        if BASE_URL:
-            # اگر کاربر خودش ته آدرس v1 گذاشته باشد، آن را پاک می‌کنیم تا تداخل ایجاد نشود
-            clean_url = BASE_URL.rstrip('/')
-            if clean_url.endswith('/v1'):
-                final_url = f"{clean_url}/chat/completions"
-            else:
-                final_url = f"{clean_url}/v1/chat/completions"
-        else:
-            final_url = "https://api.bluesminds.ir/v1/chat/completions"
             
-        response = requests.post(final_url, json=data, headers=headers)
+        response = requests.post(f"{BASE_URL}/chat/completions", json=data, headers=headers)
         
         if response.status_code == 200:
             result = response.json()
             reply = result['choices'][0]['message']['content']
             bot.reply_to(message, reply)
         else:
-            bot.reply_to(message, f"خطا در ارتباط با سرور هوش مصنوعی: {response.status_code}")
+            bot.reply_to(message, f"خطای سرور ({response.status_code}): {response.text[:100]}")
     except Exception as e:
-        bot.reply_to(message, f"یک خطای فنی رخ داد: {str(e)}")
+        bot.reply_to(message, f"خطا: {str(e)}")
 
 def run_telegram_bot():
-    print("Starting Telegram Bot Polling...")
-    bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    bot.infinity_polling()
 
 if __name__ == "__main__":
     t = threading.Thread(target=run_telegram_bot)
-    t.daemon = True
     t.start()
-    
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
