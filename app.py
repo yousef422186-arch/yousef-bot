@@ -14,7 +14,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot is Running on Render!"
+    return "Bot is Running!"
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
@@ -23,9 +23,9 @@ def handle_message(message):
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json"
         }
-        # استفاده از مدل استاندارد و ساده‌تر برای جلوگیری از ارور 400
+        # استفاده از مدل بسیار محبوب و در دسترس
         data = {
-            "model": "meta-llama/Llama-3.1-8B-Instruct",
+            "model": "mistralai/Mistral-7B-Instruct-v0.3",
             "messages": [{"role": "user", "content": message.text}],
             "max_tokens": 500
         }
@@ -37,7 +37,8 @@ def handle_message(message):
             reply = result['choices'][0]['message']['content']
             bot.reply_to(message, reply)
         else:
-            bot.reply_to(message, f"خطای سرور ({response.status_code}): {response.text[:100]}")
+            # نمایش متن کامل خطا برای تشخیص دلیل نهایی
+            bot.reply_to(message, f"خطای سرور ({response.status_code}): {response.text}")
     except Exception as e:
         bot.reply_to(message, f"خطا: {str(e)}")
 
